@@ -34,6 +34,14 @@ class Utils{
             ans.push_back(dig);
         }
         reverse(ans.begin(),ans.end());
+        int len = 7 - ans.size();
+        // vector<int>ans2;
+        // for(int i=0;i<len;i++){
+        //     ans2.push_back(0);
+        // }
+        // for(auto it:ans){
+        //     ans2.push_back(it);
+        // }
         return ans;
     }
     /**
@@ -53,8 +61,33 @@ class Utils{
      * Utils function that add padding to plain text means if text is impure it makes 
      * it pure/ready to be encrypted...
      */
-    string addPadding(string &st){
-       
+    string addPadding(string &s){
+       string st="";
+      for(int i=0;i<s.length();i++){
+        if(s[i]==' '){
+            st.push_back('@');
+        }else{
+            st.push_back(s[i]);
+        }
+      }
+      int n=st.length();
+      if(n>9){
+        if(n%9 != 0){
+            n=n+9-(n%9);
+            int len=st.length();
+            while(len != n){
+                st.push_back('@');
+                len++;
+            }
+         }
+      }else if(n<9){
+         int len=st.length();
+         while(len != 9){
+            st.push_back('@');
+            len++;
+         }
+      }
+      return st;
     }
     /**
      *Utils function to get corresponding ascii value of a character... 
@@ -80,6 +113,26 @@ class Utils{
             ans[j++]=arr[i];
         }
        return ans;
+    }
+    /**
+     * Utils function to right shift the given array by given position...
+     * @return a vector of right shifted array by given position..
+     */
+    vector<int>rightShift(vector<int>&nums,int k){
+        if(k == 0 || k == nums.size()){
+          return nums;
+        }
+        int n=nums.size();
+        k=k%n;
+        vector<int>ans(n);
+        int j=0;
+        for(int i=k;i<n;i++){
+            ans[j++]=nums[i];
+        }
+        for(int i=0;i<k;i++){
+            ans[j++]=nums[i];
+        }
+        return ans;
     }
     /**
      * Utils function to get ascii value of each corresponding chars of plain text..
@@ -241,13 +294,6 @@ class Utils{
         result.pop_back();
         return {result,stored};
     }
-};
-
-/**
- * @brief This class contains template/skeleton for creating object for encrypting the messages..
- */
-class Encryption{
-    private:
     /**
      * Encryption function that takes bits array after completion of 8th round and convert it to cipher text.
      * it does not considers the last remaining bits beacause it will be sent along with header to decryption side...
@@ -257,7 +303,7 @@ class Encryption{
     string convertToCipherText(vector<vector<int>>&bits){
        string ans="";
        for(int i=0;i<bits.size();i++){
-          int x=obj.binaryToInteger(bits[i]);
+          int x=binaryToInteger(bits[i]);
           ans += char(x);
        }
        return ans;
@@ -269,11 +315,13 @@ class Encryption{
      * and used in decryption process to get the original plain text...
      * @returns a vector of 64 bits binary converted array
      */
-    vector<int>convertToBits(string pt){
+    vector<int>convertToBits(string &pt){
        vector<int>ans;
-       vector<int>ascii = obj.asciiValueOfPt(pt);
+       vector<int>ascii = asciiValueOfPt(pt);
+    //    for(auto it:ascii)cout<<it<<" ";
+    //    cout<<endl;
        for(auto &it:ascii){
-           vector<int>temp = obj.convertToBinary(it);
+           vector<int>temp = convertToBinary(it);
            for(auto i:temp){
               ans.push_back(i);
            }
@@ -305,7 +353,6 @@ class Encryption{
      * @returns a array after performing xor operation...
      */
     vector<int> performXor(vector<int>&arr,vector<int>&key){
-        int len=arr.size();
         try{
             if(arr.size() != key.size())return {};
             vector<int>ans;
@@ -320,6 +367,14 @@ class Encryption{
         }
         return {};
     }
+};
+
+/**
+ * @brief This class contains template/skeleton for creating object for encrypting the messages..
+ */
+class Encryption{
+    private:
+    
     public:
     /**
      * @brief Object of utils class neccessary for using utils class functions..
@@ -331,6 +386,7 @@ class Encryption{
      * 
      */
     vector<string>SARRAY = {"K","CA","SC","TI","V","CR","MN","FE"};
+
     /**
      * Encryption function to encrypt the plain text to cipher text we will perform this is following steps...
      * 1.perform padding of plain text... (To be implemented)..
@@ -360,63 +416,190 @@ class Encryption{
 
         // perform padding to plain text ... (to be implemented....)
 
-        vector<int>bitsPt=convertToBits(pt);
-        vector<vector<int>>blocks = convertToBlocks(bitsPt,8);
         vector<int>keyBits=obj.inititalKeySetUp(key);
         vector<vector<int>>keys=obj.divideKeys(keyBits);
         vector<int>k1 = keys[0];
         vector<int>k2 = keys[1];
+        vector<int> sarraypos = obj.convertSarrayToPos(SARRAY);
+         
+        // converting the plain text to bits array...
+
+        vector<int>bitsPt=obj.convertToBits(pt);
         
+        // Initial shifting of bits ...
+
+        // bitsPt = obj.leftShift(bitsPt,1);
+
+        // converting the bits array to blocks..
+
+        vector<vector<int>>blocks = obj.convertToBlocks(bitsPt,8);
+       
         int roundNo = 1;
-        while(roundNo <= 8){
+
+        // while(roundNo <= 8){
 
             // step 1. performing left shift..
-            for(int i=0;i<blocks.size();i++){
-                blocks[i] = obj.leftShift(blocks[i],roundNo);
-            }
 
+            for(int i=0;i<blocks.size();i++){
+                blocks[i] = obj.leftShift(blocks[i],roundNo-1);
+            }
+            
             // step 2. performing xor operation with key1 -> (k1)...
             
             for(int i=0;i<blocks.size();i++){
-                blocks[i] = performXor(blocks[i],k1);
+                blocks[i] = obj.performXor(blocks[i],k1);
             }
+            
+            // step 3. shifting blocks based on sarray ...
 
-            // step 3. shifting blocks based on sarray ... 
-
-            vector<int> sarraypos = obj.convertSarrayToPos(SARRAY);
-            blocks = obj.ArrangepBox(blocks,sarraypos);
+             blocks = obj.ArrangepBox(blocks,sarraypos);
 
             // step 4. perform xor operation with key2 -> (k2)...
 
             for(int i=0;i<blocks.size();i++){
-                blocks[i] = performXor(blocks[i],k2);
+                blocks[i] = obj.performXor(blocks[i],k2);
             }
             
             //step 5. shift sarray based on roundNo-1; (to be implemented...)
+            
+            //  sarraypos = obj.leftShift(sarraypos,1);
+
+            //step . shift key based on round No ...
+
+            k1 = obj.rightShift(k1,roundNo-1);
+            k2 = obj.rightShift(k2,roundNo-1);
 
             // increase roundNo...
             roundNo ++;
-        }
+        // }
         
         pair<vector<int>,int> fbits = obj.blockToBits(blocks);
         int storedBit = fbits.second;
         vector<int>finalBits = fbits.first;
-        vector<vector<int>>fblocks = convertToBlocks(finalBits,7);
+        
+        //last step :- performing last shifting operation..
 
-        string ct = convertToCipherText(fblocks);
+        finalBits = obj.leftShift(finalBits,1);
+
+        vector<vector<int>>fblocks = obj.convertToBlocks(finalBits,7);
+        
+        string ct = obj.convertToCipherText(fblocks);
 
         return {ct,storedBit};
     }
        
-
-
 };
 
 /**
  * @brief This class contains functions to manage decryption of the cipher text..
  */
 class Decryption{
+    private:
+    vector<int>converttobits(string &ct){
+       vector<int>ascii = obj.asciiValueOfPt(ct);
+       vector<int> ans;
+       for(auto it:ascii){
+          vector<int>temp = obj.convertToBinary(it);
+          int len=7-temp.size();
+          while(len != 0){
+            ans.push_back(0);
+            len--;
+          }
+          for(auto i:temp){
+            ans.push_back(i);
+          }
+       }
+       return ans;
+    }
     public:
+
+    vector<string>SARRAY = {"K","CA","SC","TI","V","CR","MN","FE"};
+    
+    Utils obj;
+
+    string decryptCipherText(string &ct,string key,int storedbit){
+        
+        vector<int>keyBits=obj.inititalKeySetUp(key);
+        vector<vector<int>>keys=obj.divideKeys(keyBits);
+        vector<int>k1 = keys[0];
+        vector<int>k2 = keys[1];
+        
+        // performing neccessary operation for s-array..
+
+        vector<int> sarraypos = obj.convertSarrayToPos(SARRAY);
+        int n=sarraypos.size();
+        int *arr=new int[n];
+        vector<int>arr2;
+        for(int i=0;i<n;i++){
+            arr[sarraypos[i]]=i;
+        }
+        for(int i=0;i<n;i++){
+            arr2.push_back(arr[i]);
+        }
+        
+        vector<int>bits = converttobits(ct);
+
+        // initial shifting ...
+
+        bits = obj.rightShift(bits,1);
+        
+        bits.push_back(storedbit);
+
+        // converting the given bits.. array  to blocks...
+      
+        vector<vector<int>> blocks = obj.convertToBlocks(bits,8);
+        
+        int roundNumber = 1;
+
+        // while(roundNumber >= 1){
+            
+            // shift key based on round No...
+
+            k1 = obj.leftShift(k1,roundNumber-1);
+            k2 = obj.leftShift(k2,roundNumber-1);
+            // step 1. perform xor operation with k2..
+
+            for(int i=0;i<blocks.size();i++){
+                blocks[i]=obj.performXor(blocks[i],k2);
+            }
+            
+            // step 2. shifting blocks based on sarray...
+            
+            blocks = obj.ArrangepBox(blocks,arr2);
+    
+            // step 3. performing xor operation with k1..
+
+            for(int i=0;i<blocks.size();i++){
+                blocks[i] = obj.performXor(blocks[i],k1);
+            }
+            
+            //step 4. performing right shift..
+
+            for(int i=0;i<blocks.size();i++){
+                blocks[i]=obj.rightShift(blocks[i],roundNumber-1);
+            }
+        
+            roundNumber--;
+        // }
+        
+        
+        
+        pair<vector<int>,int> fbits = obj.blockToBits(blocks);
+
+        vector<int>finalBits = fbits.first;
+        
+        // performing initial shifting of bits..
+        
+
+        
+
+
+        vector<vector<int>>fblocks = obj.convertToBlocks(finalBits,7);
+       
+        string pt = obj.convertToCipherText(fblocks);
+
+        return pt;
+    }
 };
 
 
@@ -431,8 +614,38 @@ cin>>key;
 Encryption encObj;
 Decryption decObj;
 
+Utils obj;
+
+msg = obj.addPadding(msg);
+
+if(msg.length() > 9){
+    cout<<"I am not coded to handle length more than 9 terminating the program... ): "<<endl;
+    exit(0);
+}
+
+// Ideally it will encrypt upto 9 text ....
+
 pair<string,int>ct = encObj.encryptPlainText(msg,key);
 
 cout<<"Cipher text obtained after encryption is : "<<ct.first<<endl;
+
+string dec = decObj.decryptCipherText(ct.first,key,ct.second);
+
+cout<<dec<<endl;
+
+string decryptedText = "";
+
+for(int i=0;i<dec.length();i++){
+    if(dec[i] == '@'){
+        continue;
+    }else if(dec[i]=='='){
+        decryptedText+=' ';
+    }else{
+        decryptedText+=dec[i];
+    }
+}
+
+cout<<"The plain text after decryption is : "<<decryptedText<<endl;
+
 return 0;
 }
